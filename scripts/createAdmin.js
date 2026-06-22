@@ -1,9 +1,29 @@
-// scripts/createAdmin.js
+const bcrypt = require("bcryptjs");
+const pool = require("../config/db");
 
-const bcrypt = require("bcrypt");
+async function createAdmin() {
+  const password = "admin@123";
 
-(async () => {
-  const hash = await bcrypt.hash("admin@123", 10);
+  const hash = await bcrypt.hash(password, 10);
 
-  console.log(hash);
-})();
+  await pool.query(
+    `
+    INSERT INTO users
+    (
+      username,
+      password_hash
+    )
+    VALUES
+    (
+      $1,$2
+    )
+    `,
+    ["admin", hash],
+  );
+
+  console.log("Admin created");
+
+  process.exit();
+}
+
+createAdmin();

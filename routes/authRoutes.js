@@ -8,7 +8,7 @@ const router = express.Router();
 
 router.post("/login", async (req, res) => {
   const { username, password } = req.body;
-
+  console.log(username, password);
   const result = await pool.query(
     `
     SELECT *
@@ -19,6 +19,7 @@ router.post("/login", async (req, res) => {
   );
 
   const user = result.rows[0];
+  
 
   if (!user) {
     return res.status(401).json({

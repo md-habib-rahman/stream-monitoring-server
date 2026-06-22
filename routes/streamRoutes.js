@@ -9,8 +9,10 @@ const {
   updateChannel,
   deleteChannel,
 } = require("../repositories/channelRepository");
+const authenticatedToken = require("../middleware/authMiddleware");
 
-router.post("/channels", async (req, res) => {
+router.use(authenticatedToken);
+router.post("/", async (req, res) => {
   try {
     // console.log(req.body);
     const channel = await createChannel(req.body);
@@ -23,7 +25,7 @@ router.post("/channels", async (req, res) => {
   }
 });
 
-router.get("/channels", async (req, res) => {
+router.get("/", async (req, res) => {
   try {
     const channel = await getAllChannels();
     res.status(200).json(channel);
@@ -34,7 +36,7 @@ router.get("/channels", async (req, res) => {
   }
 });
 
-router.put("/channels/:id", async (req, res) => {
+router.put("/:id", async (req, res) => {
   try {
     const channel = await updateChannel(req.params.id, req.body);
 
@@ -46,7 +48,7 @@ router.put("/channels/:id", async (req, res) => {
   }
 });
 
-router.delete("/channels/:id", async (req, res) => {
+router.delete("/:id", async (req, res) => {
   try {
     await deleteChannel(req.params.id);
 

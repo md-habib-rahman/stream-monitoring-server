@@ -27,10 +27,10 @@ const io = new Server(server, {
   },
 });
 
-app.use("/api", streamRoutes);
-app.use("/api/upload", uploadRoutes);
-app.use("/api", eventRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/channels", streamRoutes);
+app.use("/api/upload", uploadRoutes);
+app.use("/api/events", eventRoutes);
 
 async function startMonitoring() {
   while (true) {

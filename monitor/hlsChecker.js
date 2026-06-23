@@ -31,44 +31,6 @@ async function calculateBitrate(playlistUrl, segments) {
   return Math.round((totalBytes * 8) / totalDuration / 1000);
 }
 
-// async function checkHLS(url) {
-//   try {
-//     const response = await axios.get(url, {
-//       timeout: 10000,
-//     });
-
-//     const parser = new Parser();
-
-//     parser.push(response.data);
-//     parser.end();
-
-//     const manifest = parser.manifest;
-
-//     const segments = manifest.segments || [];
-
-//     const bitrate = await calculateBitrate(url, segments);
-
-//     return {
-//       status: "UP",
-
-//       segmentCount: segments.length,
-
-//       lastSegment:
-//         segments.length > 0 ? segments[segments.length - 1].uri : null,
-
-//       bitrate,
-
-//       checkedAt: new Date(),
-//     };
-//   } catch (error) {
-//     return {
-//       status: "DOWN",
-//       error: error.message,
-//       checkedAt: new Date(),
-//     };
-//   }
-// }
-
 async function checkHLS(url) {
   try {
     let playlistUrl = url;

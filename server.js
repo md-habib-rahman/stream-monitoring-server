@@ -38,7 +38,7 @@ async function startMonitoring() {
 
     io.emit("stream-update", getStatus());
 
-    await new Promise((resolve) => setTimeout(resolve, 10000));
+    await new Promise((resolve) => setTimeout(resolve, 30000));
   }
 }
 

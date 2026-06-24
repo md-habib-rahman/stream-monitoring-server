@@ -54,18 +54,55 @@ async function checkHLS(url) {
     // Master playlist?
     // -----------------------------
 
-    if (manifest.playlists && manifest.playlists.length > 0) {
-    //   let advertisedBitrate = 0;
+    let variants = [];
 
-      if (
-        manifest.playlists[0].attributes &&
-        manifest.playlists[0].attributes.BANDWIDTH
-      ) {
+    if (manifest.playlists && manifest.playlists.length > 0) {
+      for (const playlist of manifest.playlists) {
+        const variantUrl = new URL(playlist.uri, url).href;
+
+        const variantName = playlist.attributes?.RESOLUTION
+          ? `${playlist.attributes.RESOLUTION.width}x${playlist.attributes.RESOLUTION.height}`
+          : `${Math.round((playlist.attributes?.BANDWIDTH || 0) / 1000)}kbps`;
+
+        try {
+          const variantResponse = await axios.get(variantUrl, {
+            timeout: 10000,
+          });
+
+          const variantParser = new Parser();
+
+          variantParser.push(variantResponse.data);
+
+          variantParser.end();
+
+          const variantManifest = variantParser.manifest;
+
+          variants.push({
+            name: variantName,
+            status: "UP",
+            segmentCount: variantManifest.segments?.length || 0,
+            lastSegment:
+              variantManifest.segments?.[variantManifest.segments.length - 1]
+                ?.uri || null,
+          });
+        } catch (err) {
+          variants.push({
+            name: variantName,
+            status: "DOWN",
+            error: err.message,
+          });
+        }
+      }
+
+      const firstVariant = manifest.playlists[0];
+
+      if (firstVariant.attributes?.BANDWIDTH) {
         advertisedBitrate = Math.round(
-          manifest.playlists[0].attributes.BANDWIDTH / 1000,
+          firstVariant.attributes.BANDWIDTH / 1000,
         );
       }
-      playlistUrl = new URL(manifest.playlists[0].uri, url).href;
+
+      playlistUrl = new URL(firstVariant.uri, url).href;
 
       response = await axios.get(playlistUrl, {
         timeout: 10000,
@@ -91,8 +128,11 @@ async function checkHLS(url) {
     // console.log("Segments:", segments.length);
 
     // console.log("Bitrate:", bitrate);
+    const degraded =
+      variants.length > 0 && variants.some((v) => v.status === "DOWN");
+
     return {
-      status: "UP",
+      status: degraded ? "DEGRADED" : "UP",
 
       segmentCount: segments.length,
 
@@ -100,6 +140,8 @@ async function checkHLS(url) {
         segments.length > 0 ? segments[segments.length - 1].uri : null,
 
       bitrate,
+
+      variants,
 
       checkedAt: new Date(),
     };

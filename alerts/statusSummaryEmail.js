@@ -1,6 +1,7 @@
 function generateStatusSummary(alerts) {
   const down = alerts.filter((a) => a.currentStatus === "DOWN");
   const frozen = alerts.filter((a) => a.currentStatus === "FROZEN");
+  const degraded = alerts.filter((a) => a.currentStatus === "DEGRADED");
   const recovered = alerts.filter((a) => a.currentStatus === "UP");
 
   // Helper function to build stylized sections to keep the template literal clean
@@ -15,10 +16,19 @@ function generateStatusSummary(alerts) {
           ${items
             .map(
               (c) => `
-            <li style="background: #fdfdfd; border: 1px solid #eaeaea; border-left: 4px solid ${color}; border-radius: 4px; padding: 12px; margin-bottom: 8px; color: #333333; font-size: 14px; display: flex; justify-content: space-between;">
-              <strong>${c.name}</strong> 
-              <span style="color: #64748b; font-size: 13px;">📍 ${c.location}</span>
-            </li>
+            <li style="background: #fdfdfd; border: 1px solid #eaeaea; border-left: 4px solid ${color}; border-radius: 4px; padding: 12px; margin-bottom: 8px;">
+  <div style="font-weight:600;">
+    ${c.name}
+  </div>
+
+  <div style="font-size:13px;color:#64748b;margin-top:4px;">
+    📍 ${c.location}
+  </div>
+
+  <div style="font-size:13px;margin-top:4px;">
+    ${c.previousStatus} → ${c.currentStatus}
+  </div>
+</li>
           `,
             )
             .join("")}
@@ -42,6 +52,7 @@ function generateStatusSummary(alerts) {
         <div style="padding: 30px;">
           ${buildSection(down, "Down Channels", "#ef4444")}      <!-- Red -->
           ${buildSection(frozen, "Frozen Channels", "#f59e0b")}  <!-- Orange -->
+		   ${buildSection(degraded, "Degraded Channels", "#eab308")}
           ${buildSection(recovered, "Recovered Channels", "#10b981")} <!-- Green -->
         </div>
 

@@ -7,12 +7,14 @@ const {
   getChannelById,
   createChannel,
   updateChannel,
+  setChannelEnabled,
   deleteChannel,
 } = require("../repositories/channelRepository");
 const authenticatedToken = require("../middleware/authMiddleware");
+const requireRoles = require("../middleware/requireRoles");
 
 router.use(authenticatedToken);
-router.post("/", async (req, res) => {
+router.post("/", requireRoles("ADMIN", "SUPER_ADMIN"), async (req, res) => {
   try {
     // console.log(req.body);
     const channel = await createChannel(req.body);
@@ -36,7 +38,7 @@ router.get("/", async (req, res) => {
   }
 });
 
-router.put("/:id", async (req, res) => {
+router.put("/:id", requireRoles("ADMIN", "SUPER_ADMIN"), async (req, res) => {
   try {
     const channel = await updateChannel(req.params.id, req.body);
 
@@ -48,7 +50,35 @@ router.put("/:id", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.patch(
+  "/:id/enabled",
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  async (req, res) => {
+    if (typeof req.body?.enabled !== "boolean") {
+      return res.status(400).json({
+        error: "enabled must be a boolean",
+      });
+    }
+
+    try {
+      const channel = await setChannelEnabled(req.params.id, req.body.enabled);
+
+      if (!channel) {
+        return res.status(404).json({
+          error: "Channel not found",
+        });
+      }
+
+      res.json(channel);
+    } catch (err) {
+      res.status(500).json({
+        error: err.message,
+      });
+    }
+  },
+);
+
+router.delete("/:id", requireRoles("ADMIN", "SUPER_ADMIN"), async (req, res) => {
   try {
     await deleteChannel(req.params.id);
 

@@ -2,6 +2,8 @@ const express = require("express");
 const multer = require("multer");
 
 const { uploadLogo } = require("../controllers/uploadController");
+const authenticatedToken = require("../middleware/authMiddleware");
+const requireRoles = require("../middleware/requireRoles");
 
 const router = express.Router();
 
@@ -12,6 +14,12 @@ const upload = multer({
   },
 });
 
-router.post("/logo", upload.single("file"), uploadLogo);
+router.post(
+  "/logo",
+  authenticatedToken,
+  requireRoles("ADMIN", "SUPER_ADMIN"),
+  upload.single("file"),
+  uploadLogo,
+);
 
 module.exports = router;

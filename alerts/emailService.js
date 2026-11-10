@@ -1,6 +1,7 @@
 require("dotenv").config();
 
 const nodemailer = require("nodemailer");
+const { getAlertRecipients } = require("../repositories/alertRecipientRepository");
 
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -13,18 +14,11 @@ const transporter = nodemailer.createTransport({
 
 async function sendEmail(subject, html) {
   try {
-
-    transporter.verify((error) => {
-      if (error) {
-        console.error("SMTP Error:", error.message);
-      } else {
-        console.log("SMTP Connected");
-      }
-    });
-	
-    const recipients = process.env.ALERT_EMAIL.split(",").map((email) =>
-      email.trim(),
-    );
+    const recipients = (await getAlertRecipients()).map(({ email }) => email);
+    if (recipients.length === 0) {
+      console.error("Email alert not sent: no alert recipients are configured.");
+      return false;
+    }
 
     const info = await transporter.sendMail({
       from: `"HLS Monitor" <${process.env.EMAIL_USER}>`,

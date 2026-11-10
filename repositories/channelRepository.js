@@ -10,6 +10,17 @@ async function getAllChannels() {
   return result.rows;
 }
 
+async function getEnabledChannels() {
+  const result = await pool.query(`
+    SELECT *
+    FROM channels
+    WHERE enabled IS TRUE
+    ORDER BY name
+  `);
+
+  return result.rows;
+}
+
 async function getChannelById(id) {
   const result = await pool.query(
     `
@@ -107,6 +118,20 @@ WHERE id = $13
   return result.rows[0];
 }
 
+async function setChannelEnabled(id, enabled) {
+  const result = await pool.query(
+    `
+    UPDATE channels
+    SET enabled = $1, updated_at = NOW()
+    WHERE id = $2
+    RETURNING *
+    `,
+    [enabled, id],
+  );
+
+  return result.rows[0];
+}
+
 async function deleteChannel(id) {
   await pool.query(
     `
@@ -119,8 +144,10 @@ async function deleteChannel(id) {
 
 module.exports = {
   getAllChannels,
+  getEnabledChannels,
   getChannelById,
   createChannel,
   updateChannel,
+  setChannelEnabled,
   deleteChannel,
 };

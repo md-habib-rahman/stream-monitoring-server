@@ -34,7 +34,7 @@ function evaluateFreezeStatus(streamId, result, state) {
 }
 
 // 2. Variant Logic
-async function evaluateVariants(stream, result, state) {
+async function evaluateVariants(stream, result, state, variantChanges = []) {
   const currentVariants = result.variants?.map((v) => v.name) || [];
 
   const previousVariants = state.previousVariants[stream.id] || [];
@@ -50,6 +50,7 @@ async function evaluateVariants(stream, result, state) {
   }
 
   const expectedVariants = state.expectedVariants[stream.id];
+  const notify = result.status !== "DOWN";
 
   let isDegraded = false;
 
@@ -84,6 +85,15 @@ async function evaluateVariants(stream, result, state) {
         current_status: "DOWN",
         message: `${stream.name} - ${variant}: UP → DOWN`,
       });
+      if (notify)
+        variantChanges.push({
+          id: stream.id,
+          name: stream.name,
+          location: stream.location,
+          variant,
+          previous: "UP",
+          current: "DOWN",
+        });
 
       console.log(`[VARIANT DOWN] ${stream.name} - ${variant}`);
     }
@@ -102,6 +112,16 @@ async function evaluateVariants(stream, result, state) {
         message: `${stream.name} - ${variant}: DOWN → UP`,
       });
 
+      if (notify)
+        variantChanges.push({
+          id: stream.id,
+          name: stream.name,
+          location: stream.location,
+          variant,
+          previous: "DOWN",
+          current: "UP",
+        });
+
       console.log(`[VARIANT UP] ${stream.name} - ${variant}`);
     }
   }
@@ -112,11 +132,25 @@ async function evaluateVariants(stream, result, state) {
 }
 
 // 3. Status Alerts & Cooldowns
-async function evaluateStatusChanges(stream, currentStatus, state) {
+async function evaluateStatusChanges(
+  stream,
+  currentStatus,
+  state,
+  transitions = [],
+) {
   const previousStatus = state.previousStatuses[stream.id];
   let alertToPush = null;
 
   if (previousStatus && previousStatus !== currentStatus) {
+    const since = state.statusSince[stream.id];
+    transitions.push({
+      id: stream.id,
+      name: stream.name,
+      location: stream.location,
+      previousStatus,
+      currentStatus,
+      previousDurationMs: since ? Date.now() - since : null,
+    });
     await createEvent({
       channel_id: stream.id,
       event_type: "STATUS_CHANGE",
@@ -188,10 +222,33 @@ async function evaluateStatusChanges(stream, currentStatus, state) {
 
 // 4. Bitrate Logic
 async function evaluateBitrate(stream, result, state) {
+  //   console.log(state);
+  //   console.log(
+  //     `[BITRATE DEBUG] ${stream.name}`,
+  //     "bitrate=",
+  //     result.bitrate,
+  //     "threshold=",
+  //     stream?.min_bitrate,
+  //     "status=",
+  //     result.status,
+  //     "alertState=",
+  //     state.bitrateAlerts[stream.id],
+  //   );
+
   if (result.status !== "UP" || result.bitrate === undefined) return;
 
-  const threshold = stream.minBitrate;
+  const threshold = stream.min_bitrate;
   const isLow = result.bitrate < threshold;
+
+  console.log(
+    `[BITRATE DEBUG] ${stream.name}`,
+    "bitrate=",
+    result.bitrate,
+    typeof result.bitrate,
+    "threshold=",
+    threshold,
+    typeof threshold,
+  );
 
   if (isLow && !state.bitrateAlerts[stream.id]) {
     await createEvent({
@@ -209,20 +266,42 @@ async function evaluateBitrate(stream, result, state) {
     state.bitrateAlerts[stream.id] = true;
   }
 
-  if (!isLow && state.bitrateAlerts[stream.id]) {
+  if (isLow && !state.bitrateAlerts[stream.id]) {
     await createEvent({
       channel_id: stream.id,
-      event_type: "BITRATE_RECOVERED",
-      previous_status: "LOW",
-      current_status: "OK",
-      bitrate: result.bitrate,
-      message: `Bitrate restored`,
+      event_type: "BITRATE_LOW",
+      previous_status: "OK",
+      current_status: "LOW",
+      bitrate,
+      message: `Bitrate below threshold`,
     });
-    await sendEmail(
-      `[BITRATE RECOVERED] ${stream.name}`,
-      generateBitrateRestoredEmail(stream.name, result.bitrate),
-    );
-    state.bitrateAlerts[stream.id] = false;
+
+    state.bitrateCooldowns[stream.id] = {
+      startedAt: Date.now(),
+      sent: false,
+      stream,
+      bitrate,
+      threshold,
+    };
+
+    state.bitrateAlerts[stream.id] = true;
+  }
+
+  const cooldown = state.bitrateCooldowns[stream.id];
+
+  if (cooldown && !cooldown.sent && isLow) {
+    const elapsed = Date.now() - cooldown.startedAt;
+
+    if (elapsed >= DOWN_ALERT_COOLDOWN_MS) {
+      console.log(`[LOW BITRATE ALERT] ${stream.name}`);
+
+      await sendEmail(
+        `[BITRATE ALERT] ${stream.name}`,
+        generateLowBitrateEmail(stream.name, bitrate, threshold),
+      );
+
+      cooldown.sent = true;
+    }
   }
 
   result.bitrateStatus = isLow ? "LOW" : "OK";

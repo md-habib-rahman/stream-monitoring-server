@@ -5,7 +5,7 @@ const { getEvents } = require("../repositories/eventRepository");
 const router = express.Router();
 const authenticatedToken = require("../middleware/authMiddleware");
 
-// router.use(authenticatedToken);
+router.use(authenticatedToken);
 
 router.get("/", async (req, res) => {
   try {

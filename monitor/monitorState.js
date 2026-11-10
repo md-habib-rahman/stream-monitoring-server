@@ -9,6 +9,8 @@ const state = {
   degradedChannels: {},
   downAlertCooldowns: {},
   expectedVariants: {},
+  bitrateCooldowns: {},
+  statusSince: {},
 };
 
 module.exports = state;

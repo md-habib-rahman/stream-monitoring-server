@@ -8,6 +8,7 @@ const eventRoutes = require("./routes/eventRoutes");
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const alertRecipientRoutes = require("./routes/alertRecipientRoutes");
+const infrastructureRoutes = require("./routes/infrastructureRoutes");
 
 const { getAllChannels } = require("./repositories/channelRepository");
 const uploadRoutes = require("./routes/uploadRoutes");
@@ -73,6 +74,7 @@ io.use(async (socket, next) => {
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/alert-recipients", alertRecipientRoutes);
+app.use("/api/infrastructure", infrastructureRoutes);
 app.use("/api/channels", streamRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/events", eventRoutes);

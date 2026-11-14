@@ -65,7 +65,7 @@ async function monitorStreams() {
       );
 
       if (alert) {
-        statusAlerts.push(alert);
+        statusAlerts.push({ ...alert, id: stream.id });
       }
 
       // 5. Process Bitrate Drops/Recoveries
@@ -100,17 +100,44 @@ async function monitorStreams() {
         `[HLS ALERT] ${statusAlerts.length} Channel Status Change(s)`,
         generateStatusSummary(statusAlerts),
       );
-      await sendTelegram(buildTelegramMessage(statusAlerts));
     }
 
     state.streamStatus = results;
-    if (transitions.length > 0 || variantChanges.length > 0) {
+    const telegramUpdates = new Map();
+    const getTelegramUpdate = (id) => {
+      if (!telegramUpdates.has(String(id))) {
+        telegramUpdates.set(String(id), {
+          transitions: [],
+          variantChanges: [],
+        });
+      }
+      return telegramUpdates.get(String(id));
+    };
+
+    for (const transition of transitions) {
+      getTelegramUpdate(transition.id).transitions.push(transition);
+    }
+    for (const variantChange of variantChanges) {
+      getTelegramUpdate(variantChange.id).variantChanges.push(variantChange);
+    }
+    for (const alert of statusAlerts) {
+      const update = getTelegramUpdate(alert.id);
+      if (update.transitions.length === 0) {
+        update.transitions.push(alert);
+      }
+    }
+
+    for (const [channelId, update] of telegramUpdates) {
       try {
-        sendTelegram(buildTelegramMessage(transitions, variantChanges)).catch(
-          () => {},
+        await sendTelegram(
+          buildTelegramMessage(update.transitions, update.variantChanges),
+          { cooldownKey: `hls-channel:${channelId}` },
         );
-      } catch (err) {
-        console.error("Telegram build error:", err.message);
+      } catch (error) {
+        console.error(
+          `[Telegram alert build failed] channel ${channelId}:`,
+          error,
+        );
       }
     }
   } catch (error) {

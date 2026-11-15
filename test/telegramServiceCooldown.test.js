@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const axios = require("axios");
 const { sendTelegram } = require("../alerts/telegramService");
 
-test("suppresses HLS Telegram sends for a channel during its one-minute cooldown", async () => {
+test("sends each HLS Telegram alert without a cooldown", async () => {
   const originalToken = process.env.TELEGRAM_BOT_TOKEN;
   const originalChatId = process.env.TELEGRAM_CHAT_ID;
   const originalPost = axios.post;
@@ -14,23 +14,9 @@ test("suppresses HLS Telegram sends for a channel during its one-minute cooldown
     calls.push(args);
     return { data: { ok: true } };
   };
-  const key = `hls-channel:test-${Date.now()}`;
-
   try {
-    assert.equal(
-      await sendTelegram("first status", { cooldownKey: key }),
-      true,
-    );
-    assert.equal(
-      await sendTelegram("status within cooldown", { cooldownKey: key }),
-      false,
-    );
-    assert.equal(
-      await sendTelegram("different channel", {
-        cooldownKey: `${key}-other`,
-      }),
-      true,
-    );
+    assert.equal(await sendTelegram("first status"), true);
+    assert.equal(await sendTelegram("status immediately after"), true);
     assert.equal(calls.length, 2);
   } finally {
     axios.post = originalPost;

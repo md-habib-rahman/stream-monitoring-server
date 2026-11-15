@@ -127,17 +127,13 @@ async function monitorStreams() {
       }
     }
 
-    for (const [channelId, update] of telegramUpdates) {
+    for (const update of telegramUpdates.values()) {
       try {
         await sendTelegram(
           buildTelegramMessage(update.transitions, update.variantChanges),
-          { cooldownKey: `hls-channel:${channelId}` },
         );
       } catch (error) {
-        console.error(
-          `[Telegram alert build failed] channel ${channelId}:`,
-          error,
-        );
+        console.error("[Telegram alert build failed]:", error);
       }
     }
   } catch (error) {

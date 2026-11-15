@@ -95,6 +95,6 @@ app.get("/api/streams", authenticatedToken, (req, res) => {
   res.json(getStatus());
 });
 
-server.listen(3001, () => {
+server.listen(3001, "127.0.0.1", () => {
   console.log("Server running on port 3001");
 });

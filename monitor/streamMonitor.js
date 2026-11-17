@@ -161,6 +161,7 @@ function getStatus() {
       checkedAt,
       freezeCount,
       error,
+      tbs_mappings,
     }) => ({
       id,
       name,
@@ -179,6 +180,7 @@ function getStatus() {
       checkedAt,
       freezeCount,
       error,
+      tbs_mappings,
     }),
   );
 }

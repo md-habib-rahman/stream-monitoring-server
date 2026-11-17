@@ -9,12 +9,21 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const alertRecipientRoutes = require("./routes/alertRecipientRoutes");
 const infrastructureRoutes = require("./routes/infrastructureRoutes");
+const { createTbsRouter } = require("./routes/tbsRoutes");
+const tbsDeviceRepository = require("./repositories/tbsDeviceRepository");
+const TbsClient = require("./services/tbs/TbsClient");
+const TbsManager = require("./services/tbs/tbsManager");
 
 const { getAllChannels } = require("./repositories/channelRepository");
 const uploadRoutes = require("./routes/uploadRoutes");
 const authenticatedToken = require("./middleware/authMiddleware");
 
 const { monitorStreams, getStatus } = require("./monitor/streamMonitor");
+
+const tbsManager = new TbsManager({
+  deviceRepository: tbsDeviceRepository,
+  clientFactory: (device) => new TbsClient(device),
+});
 
 const app = express();
 app.use(express.json());
@@ -75,6 +84,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/alert-recipients", alertRecipientRoutes);
 app.use("/api/infrastructure", infrastructureRoutes);
+app.use("/api/tbs", createTbsRouter({ manager: tbsManager }));
 app.use("/api/channels", streamRoutes);
 app.use("/api/upload", uploadRoutes);
 app.use("/api/events", eventRoutes);
@@ -89,10 +99,15 @@ async function startMonitoring() {
   }
 }
 
-startMonitoring();
-
 app.get("/api/streams", authenticatedToken, (req, res) => {
   res.json(getStatus());
+});
+
+startMonitoring().catch((error) => {
+  console.error("HLS stream monitoring failed:", error);
+});
+tbsManager.loadFromDatabase().catch((error) => {
+  console.error("TBS device registry failed to load:", error);
 });
 
 server.listen(3001, "127.0.0.1", () => {

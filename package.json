@@ -12,7 +12,8 @@
     "infra:simulate": "node infrastructure/simulate.js",
     "migrate:user-roles": "node scripts/migrateUserRoles.js",
     "migrate:alert-recipients": "node scripts/migrateAlertEmailRecipients.js",
-    "migrate:infrastructure": "node scripts/migrateInfrastructure.js"
+    "migrate:infrastructure": "node scripts/migrateInfrastructure.js",
+    "migrate:tbs-devices": "node scripts/migrateTbsDevices.js"
   },
   "keywords": [],
   "author": "",

@@ -1,6 +1,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { parseDvbStatXml } = require("../services/tbs/dvbstatParser");
+const {
+  inspectDvbStatXml,
+  parseDvbStatXml,
+} = require("../services/tbs/dvbstatParser");
 
 test("parses stream telemetry from the selected modules", () => {
   const xml = `
@@ -29,4 +32,33 @@ test("parses stream telemetry from the selected modules", () => {
 
 test("rejects untrusted module names", () => {
   assert.throws(() => parseDvbStatXml("<root/>", ["cdn>(.*)"]));
+});
+
+test("parses module and stream tags with attributes and either quote style", () => {
+  const xml = `
+    <root>
+      <cdn count="1">
+        <dvs type="video" name = '17'>
+          <sta><lock>true</lock><sync>true</sync><dnm>News HD</dnm></sta>
+        </dvs>
+      </cdn>
+    </root>`;
+  const streams = parseDvbStatXml(xml, ["cdn"]);
+
+  assert.equal(streams.length, 1);
+  assert.equal(streams[0].mid, "17");
+  assert.equal(streams[0].name, "News HD");
+  assert.equal(streams[0].status, "online");
+});
+
+test("reports XML structure without including attribute or tag values", () => {
+  const diagnostic = inspectDvbStatXml(
+    '<root><cdn><dvs name="private-mid"><sta><lock>true</lock></sta></dvs></cdn></root>',
+  );
+
+  assert.deepEqual(diagnostic.modulesFound, ["cdn"]);
+  assert.equal(diagnostic.dvsCount, 1);
+  assert.deepEqual(diagnostic.dvsAttributeNames, ["name"]);
+  assert.equal(JSON.stringify(diagnostic).includes("private-mid"), false);
+  assert.equal(JSON.stringify(diagnostic).includes("true"), false);
 });

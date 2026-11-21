@@ -1,6 +1,7 @@
 const axios = require("axios");
 const {
   SUPPORTED_MODS,
+  inspectDvbStatXml,
   parseDvbStatXml,
 } = require("./dvbstatParser");
 
@@ -245,12 +246,21 @@ class TbsClient {
     const selectedMods = validateMods(mods);
     const xml = await this.get("/portal/?app=dvbstat");
     const streams = parseDvbStatXml(xml, selectedMods);
+    const diagnostics =
+      streams.length === 0 ? inspectDvbStatXml(xml) : undefined;
+    if (diagnostics) {
+      console.warn(
+        `[TBS parser] No streams parsed for ${this.id}:`,
+        JSON.stringify(diagnostics),
+      );
+    }
     return {
       tbsId: this.id,
       tbsName: this.name,
       fetchedAt: new Date().toISOString(),
       count: streams.length,
       streams,
+      ...(diagnostics ? { diagnostics } : {}),
     };
   }
 

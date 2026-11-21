@@ -204,6 +204,7 @@ function createTbsRouter({
         fetchedAt: data.fetchedAt,
         count: streams.length,
         streams,
+        ...(data.diagnostics ? { diagnostics: data.diagnostics } : {}),
       });
     } catch (error) {
       return res.status(error.statusCode || 502).json({ error: error.message });

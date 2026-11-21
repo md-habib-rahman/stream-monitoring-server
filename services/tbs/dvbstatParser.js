@@ -3,9 +3,17 @@ const SUPPORTED_MOD_SET = new Set(SUPPORTED_MODS);
 
 function readTag(xmlBlock, tagName) {
   const match = xmlBlock.match(
-    new RegExp(`<${tagName}>([^<]*)</${tagName}>`, "i"),
+    new RegExp(`<${tagName}\\b[^>]*>([^<]*)</${tagName}\\s*>`, "i"),
   );
   return match ? match[1].trim() : null;
+}
+
+function readAttribute(attributes, name) {
+  const escapedName = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const match = attributes.match(
+    new RegExp(`\\b${escapedName}\\s*=\\s*(["'])(.*?)\\1`, "i"),
+  );
+  return match ? match[2].trim() : null;
 }
 
 function normalizeStatus(lock, sync) {
@@ -35,18 +43,22 @@ function parseDvbStatXml(xmlString, targetMods = ["cdn"]) {
 
   for (const mod of new Set(targetMods)) {
     const modSectionMatch = xml.match(
-      new RegExp(`<${mod}>([\\s\\S]*?)</${mod}>`, "i"),
+      new RegExp(`<${mod}\\b[^>]*>([\\s\\S]*?)</${mod}\\s*>`, "i"),
     );
     if (!modSectionMatch) continue;
 
     const itemMatches = [
       ...modSectionMatch[1].matchAll(
-        /<dvs\s+name="([^"]+)">([\s\S]*?)<\/dvs>/gi,
+        /<dvs\b([^>]*)>([\s\S]*?)<\/dvs\s*>/gi,
       ),
     ];
 
     for (const match of itemMatches) {
-      const mid = match[1];
+      const mid =
+        readAttribute(match[1], "name") ||
+        readAttribute(match[1], "mid") ||
+        readAttribute(match[1], "id");
+      if (!mid) continue;
       const block = match[2];
       const statusMatch = block.match(/<sta>([\s\S]*?)<\/sta>/i);
       const statusBlock = statusMatch ? statusMatch[1] : block;
@@ -76,7 +88,35 @@ function parseDvbStatXml(xmlString, targetMods = ["cdn"]) {
   return streams;
 }
 
+function inspectDvbStatXml(xmlString) {
+  const xml = String(xmlString || "");
+  const tagNames = new Set();
+  for (const match of xml.matchAll(/<\/?\s*([a-z][\w:.-]*)\b/gi)) {
+    tagNames.add(match[1].toLowerCase());
+  }
+
+  const dvsAttributes = new Set();
+  let dvsCount = 0;
+  for (const match of xml.matchAll(/<dvs\b([^>]*)>/gi)) {
+    dvsCount += 1;
+    for (const attribute of match[1].matchAll(/([a-z][\w:.-]*)\s*=/gi)) {
+      dvsAttributes.add(attribute[1].toLowerCase());
+    }
+  }
+
+  return {
+    responseLength: xml.length,
+    modulesFound: SUPPORTED_MODS.filter((mod) =>
+      new RegExp(`<${mod}\\b`, "i").test(xml),
+    ),
+    tagNames: [...tagNames].slice(0, 40),
+    dvsCount,
+    dvsAttributeNames: [...dvsAttributes].slice(0, 20),
+  };
+}
+
 module.exports = {
   SUPPORTED_MODS,
   parseDvbStatXml,
+  inspectDvbStatXml,
 };

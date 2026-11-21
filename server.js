@@ -91,11 +91,14 @@ app.use("/api/events", eventRoutes);
 
 async function startMonitoring() {
   while (true) {
-    await monitorStreams();
+    try {
+      await monitorStreams();
+      io.emit("stream-update", getStatus());
+    } catch (err) {
+      console.error("[Monitor Error]", err);
+    }
 
-    io.emit("stream-update", getStatus());
-
-    await new Promise((resolve) => setTimeout(resolve, 30000));
+    await new Promise((resolve) => setTimeout(resolve, 60000));
   }
 }
 
